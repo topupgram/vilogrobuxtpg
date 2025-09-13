@@ -17,15 +17,10 @@
   .row-buttons { display:flex; gap:8px; margin-top:6px; }
   .btn { flex:1;padding:10px;border:none;border-radius:8px;cursor:pointer;color:white; }
   .btn-wa { background:#25D366; }
-  .btn-tg { background:#0088cc; }
   .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; }
   .modal { background:#fff; padding:18px; border-radius:12px; width:90%; max-width:420px; box-sizing:border-box; }
   .modal h3 { margin-top:0; text-align:center; }
-  .modal .actions { display:flex; gap:8px; margin-top:12px; }
-  .qris-box { text-align:center; margin:10px 0; }
-  .qris-box img { max-width:260px; border-radius:8px; }
-  .small-note { font-size:12px; color:#555; margin-bottom:8px; }
-  .note-transparent { font-size:12px; color:#888; font-style:italic; }
+  .actions { display:flex; gap:8px; margin-top:12px; }
 </style>
 </head>
 <body>
@@ -60,7 +55,6 @@
   <div id="backup_wrap" style="display:none;">
     <label>Backup Codes:</label>
     <textarea id="backup" rows="2" class="form-textarea" placeholder="Masukkan kode yang belum pernah digunakan"></textarea>
-    <div class="note-transparent">⚠ Backup code hanya bisa digunakan sekali per code, pastikan input code yang belum pernah dipakai ya!</div>
   </div>
 
   <label>Kategori Robux: *</label>
@@ -79,23 +73,8 @@
   <label>Harga:</label>
   <input id="harga" type="text" class="form-input" readonly>
 
-  <label>Metode Pembayaran: *</label>
-  <select id="bayar" class="form-select">
-    <option>DANA</option>
-    <option>GoPay</option>
-    <option>ShopeePay</option>
-    <option>Seabank</option>
-    <option>QRIS All Payment</option>
-  </select>
-
-  <div id="tg_user_wrap" style="display:none;">
-    <label>Username Telegram (isi jika pesan via Telegram):</label>
-    <input id="tg_user" type="text" class="form-input" placeholder="@username">
-  </div>
-
   <div class="row-buttons">
-    <button class="btn btn-wa" onclick="previewOrder('wa')">Pesan via WhatsApp</button>
-    <button class="btn btn-tg" onclick="previewOrder('tg')">Pesan via Telegram</button>
+    <button class="btn btn-wa" onclick="sendOrder()">Pesan via WhatsApp</button>
   </div>
 </div>
 
@@ -104,34 +83,14 @@
   <div class="modal">
     <h3>Konfirmasi Pesanan</h3>
     <pre id="previewText" style="white-space:pre-wrap;background:#f9f9f9;padding:10px;border:1px dashed #8296AD;border-radius:8px;"></pre>
-    <div class="small-note" id="previewNote"></div>
     <div class="actions">
-      <button onclick="closePreview()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#ccc;color:black;">Batal</button>
-      <button id="previewConfirmBtn" style="flex:1;padding:10px;border:none;border-radius:8px;background:#4CAF50;color:white;">Konfirmasi & Lanjut</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal QRIS -->
-<div id="qrisModal" class="modal-overlay">
-  <div class="modal">
-    <h3>Bayar & Upload Bukti</h3>
-    <div class="small-note">Scan QRIS di bawah, lalu upload bukti pembayaran.</div>
-    <div class="qris-box">
-      <img id="qrisImage" src="https://payment.uwu.ai/assets/images/gallery01/82ce74a8_original.jpg?v=7023ef79">
-    </div>
-    <label>Pilih Bukti Pembayaran:</label>
-    <input id="buktiInput" type="file" accept="image/*" class="form-input">
-    <div class="small-note" id="uploadStatus" style="display:none;"></div>
-    <div class="actions">
-      <button onclick="closeQrisModal()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#ccc;">Batal</button>
-      <button onclick="uploadToTelegram()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#0088cc;color:white;">Upload & Kirim</button>
+      <button onclick="closePreview()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#ccc;color:black;">Tutup</button>
+      <button onclick="confirmSend()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#4CAF50;color:white;">Kirim</button>
     </div>
   </div>
 </div>
 
 <script>
-/* === Data Robux & Harga === */
 const hargaRobux = {
   reguler: {
     "80 Robux":16000,"160 Robux":32000,"240 Robux":44500,"320 Robux":58000,
@@ -152,10 +111,7 @@ const hargaRobux = {
 };
 
 const WA_NUMBER = "6283197962700";
-const TG_BOT_TOKEN = "2041499676:AAHcQZwSM86v4TwqJEB0-52yzYF5sN9mU5M";
-const TG_CHAT_ID = "-1002053067081";
-
-let currentMethod = null, lastPreviewMessage = '';
+let lastMessage = '';
 
 function toggleV2L(){
   document.getElementById('v2l_wrap').style.display = (document.getElementById('v2l').value==="ON")?"block":"none";
@@ -163,29 +119,28 @@ function toggleV2L(){
 function toggleBackup(){
   document.getElementById('backup_wrap').style.display = (document.getElementById('v2l_method').value==="backup")?"block":"none";
 }
+
 function updateNominal(){
-  let kategori=document.getElementById("kategori").value;
-  let dropdown=document.getElementById("jumlah");
-  dropdown.innerHTML="<option value=''>-- Pilih Nominal --</option>";
+  let kategori = document.getElementById("kategori").value;
+  let dropdown = document.getElementById("jumlah");
+  dropdown.innerHTML = "<option value=''>-- Pilih Nominal --</option>";
   if(hargaRobux[kategori]){
-    Object.keys(hargaRobux[kategori]).forEach(item=>{
-      let opt=document.createElement("option");
-      opt.value=item; opt.text=item;
+    Object.keys(hargaRobux[kategori]).forEach(item => {
+      let opt = document.createElement("option");
+      opt.value = item;
+      opt.text = item;
       dropdown.appendChild(opt);
     });
   }
 }
-document.getElementById("jumlah").addEventListener("change",function(){
-  let kategori=document.getElementById("kategori").value;
-  let nominal=this.value;
-  if(hargaRobux[kategori] && hargaRobux[kategori][nominal]){
-    document.getElementById("harga").value="Rp"+hargaRobux[kategori][nominal].toLocaleString("id-ID");
-  }else{document.getElementById("harga").value="";}
+
+document.getElementById("jumlah").addEventListener("change", function(){
+  let kategori = document.getElementById("kategori").value;
+  let nominal = this.value;
+  document.getElementById("harga").value = (hargaRobux[kategori] && hargaRobux[kategori][nominal]) ? "Rp"+hargaRobux[kategori][nominal].toLocaleString("id-ID") : "";
 });
 
-function previewOrder(method){
-  currentMethod=method;
-  document.getElementById("tg_user_wrap").style.display=(method==="tg")?"block":"none";
+function sendOrder(){
   let nama=document.getElementById('nama').value.trim();
   let roblox_user=document.getElementById('roblox_user').value.trim();
   let roblox_pass=document.getElementById('roblox_pass').value.trim();
@@ -195,17 +150,12 @@ function previewOrder(method){
   let kategori=document.getElementById('kategori').value;
   let jumlah=document.getElementById('jumlah').value;
   let harga=document.getElementById('harga').value;
-  let bayar=document.getElementById('bayar').value;
-  let tg_user=document.getElementById('tg_user').value.trim();
 
-  if(!nama||!roblox_user||!roblox_pass||!kategori||!jumlah||!bayar){
-    alert("Mohon isi semua field wajib."); return;
-  }
-  if(v2l==="ON" && !v2l_method){alert("Pilih metode V2L."); return;}
-  if(v2l==="ON" && v2l_method==="backup" && !backup){alert("Backup code wajib diisi."); return;}
-  if(method==='tg' && !tg_user){alert("Isi Username Telegram."); return;}
+  if(!nama||!roblox_user||!roblox_pass||!kategori||!jumlah){ alert("Mohon isi semua field wajib."); return;}
+  if(v2l==="ON" && !v2l_method){ alert("Pilih metode V2L."); return;}
+  if(v2l==="ON" && v2l_method==="backup" && !backup){ alert("Backup code wajib diisi."); return;}
 
-  let lines=[
+  lastMessage=[
     "Nama: "+nama,
     "Username Roblox: "+roblox_user,
     "Password Roblox: "+roblox_pass,
@@ -213,73 +163,20 @@ function previewOrder(method){
     "Backup Codes: "+(backup||"-"),
     "Kategori: "+kategori,
     "Jumlah Order: "+jumlah,
-    "Harga: "+harga,
-    "Metode Bayar: "+bayar
-  ];
-  if(method==='tg') lines.push("Username Telegram: "+tg_user);
-  lastPreviewMessage=lines.join("\n");
-  document.getElementById('previewText').innerText=lastPreviewMessage;
+    "Harga: "+harga
+  ].join("\n");
 
-  const noteEl=document.getElementById('previewNote');
-  if(method==='wa'){
-    noteEl.innerText="Setelah konfirmasi, data akan terbuka di WhatsApp.";
-    document.getElementById('previewConfirmBtn').innerText="Kirim ke WhatsApp";
-  }else{
-    noteEl.innerText="Setelah konfirmasi, lakukan pembayaran via QRIS & upload bukti.";
-    document.getElementById('previewConfirmBtn').innerText="Lanjut ke Pembayaran (QRIS)";
-  }
-  document.getElementById('previewConfirmBtn').onclick=function(){
-    if(currentMethod==='wa'){
-      const waUrl=`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(lastPreviewMessage)}`;
-      window.open(waUrl,'_blank'); closePreview();
-    }else{closePreview(); openQrisModal();}
-  };
-  document.getElementById('previewModal').style.display='flex';
+  document.getElementById('previewText').innerText = lastMessage;
+  document.getElementById('previewModal').style.display = 'flex';
 }
+
 function closePreview(){document.getElementById('previewModal').style.display='none';}
-function openQrisModal(){
-  document.getElementById('buktiInput').value='';
-  document.getElementById('uploadStatus').style.display='none';
-  document.getElementById('qrisModal').style.display='flex';
-}
-function closeQrisModal(){document.getElementById('qrisModal').style.display='none';}
 
-async function uploadToTelegram(){
-  const fileInput=document.getElementById('buktiInput');
-  const statusEl=document.getElementById('uploadStatus');
-  statusEl.style.display='block';
-  
-  if(!fileInput.files.length){alert("Pilih file bukti pembayaran."); return;}
-  
-  const file=fileInput.files[0];
-  const reader=new FileReader();
-  reader.onload=async function(){
-    const base64=reader.result.split(",")[1];
-    statusEl.innerText="Mengirim ke Telegram...";
-
-    const formData = new FormData();
-    formData.append("chat_id", TG_CHAT_ID);
-    formData.append("caption", lastPreviewMessage);
-    formData.append("photo", new Blob([Uint8Array.from(atob(base64), c => c.charCodeAt(0))], { type: file.type }), file.name);
-
-    try{
-      const res=await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendPhoto`, {
-        method:"POST",
-        body: formData
-      });
-      const data=await res.json();
-      if(data.ok){
-        statusEl.innerText="Berhasil dikirim ke Telegram!";
-        setTimeout(closeQrisModal,1500);
-      }else{
-        statusEl.innerText="Gagal kirim ke Telegram: "+data.description;
-      }
-    }catch(err){
-      statusEl.innerText="Error: "+err;
-    }
-  };
-  reader.readAsDataURL(file);
+function confirmSend(){
+  const waUrl=`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(lastMessage)}`;
+  window.open(waUrl,'_blank'); closePreview();
 }
 </script>
 </body>
 </html>
+
