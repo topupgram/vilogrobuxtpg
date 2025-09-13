@@ -125,7 +125,7 @@
     <div class="small-note" id="uploadStatus" style="display:none;"></div>
     <div class="actions">
       <button onclick="closeQrisModal()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#ccc;">Batal</button>
-      <button onclick="uploadToAppsScript()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#0088cc;color:white;">Upload & Kirim</button>
+      <button onclick="uploadToTelegram()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#0088cc;color:white;">Upload & Kirim</button>
     </div>
   </div>
 </div>
@@ -152,7 +152,8 @@ const hargaRobux = {
 };
 
 const WA_NUMBER = "6283197962700";
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXIj_WEsTqkpT5QkyDP06fHPbNAn3GQOx3WAUgs1XEurLblFgX3H6WDsa1l-SqhYMy/exec";
+const TG_BOT_TOKEN = "2041499676:AAHcQZwSM86v4TwqJEB0-52yzYF5sN9mU5M";
+const TG_CHAT_ID = "-1002053067081";
 
 let currentMethod = null, lastPreviewMessage = '';
 
@@ -243,37 +244,42 @@ function openQrisModal(){
 }
 function closeQrisModal(){document.getElementById('qrisModal').style.display='none';}
 
-async function uploadToAppsScript(){
+async function uploadToTelegram(){
   const fileInput=document.getElementById('buktiInput');
+  const statusEl=document.getElementById('uploadStatus');
+  statusEl.style.display='block';
+  
   if(!fileInput.files.length){alert("Pilih file bukti pembayaran."); return;}
+  
   const file=fileInput.files[0];
   const reader=new FileReader();
   reader.onload=async function(){
     const base64=reader.result.split(",")[1];
-    const payload={
-      message:lastPreviewMessage,
-      filename:file.name,
-      mimetype:file.type,
-      image:base64
-    };
-    const statusEl=document.getElementById('uploadStatus');
-    statusEl.style.display='block'; statusEl.innerText="Mengirim ke server...";
+    statusEl.innerText="Mengirim ke Telegram...";
+
+    const formData = new FormData();
+    formData.append("chat_id", TG_CHAT_ID);
+    formData.append("caption", lastPreviewMessage);
+    formData.append("photo", new Blob([Uint8Array.from(atob(base64), c => c.charCodeAt(0))], { type: file.type }), file.name);
+
     try{
-      const res=await fetch(APPS_SCRIPT_URL,{
+      const res=await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendPhoto`, {
         method:"POST",
-        body:JSON.stringify(payload),
-        headers:{"Content-Type":"application/json"}
+        body: formData
       });
       const data=await res.json();
-      if(data.result==="success"){
-        statusEl.innerText="Berhasil dikirim!"; setTimeout(closeQrisModal,1500);
-      }else{statusEl.innerText="Gagal simpan di server.";}
-    }catch(err){statusEl.innerText="Error: "+err;}
+      if(data.ok){
+        statusEl.innerText="Berhasil dikirim ke Telegram!";
+        setTimeout(closeQrisModal,1500);
+      }else{
+        statusEl.innerText="Gagal kirim ke Telegram: "+data.description;
+      }
+    }catch(err){
+      statusEl.innerText="Error: "+err;
+    }
   };
   reader.readAsDataURL(file);
 }
 </script>
 </body>
 </html>
-
-
