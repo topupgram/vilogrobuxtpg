@@ -1,278 +1,77 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8" />
-<title>Formulir Pembelian Robux VILOG</title>
+<meta charset="utf-8">
+<title>Formulir Robux VILOG</title>
 <style>
-  body { background:#f2f6fa; font-family: Roboto, Arial, sans-serif; padding:20px; }
-  .card { max-width:450px;margin:auto;padding:14px;border:2px solid #8296AD;border-radius:12px;background:#ffffff;font-size:13px;line-height:1.5; }
-  h2 { text-align:center;background:#C9DBF0;padding:10px;border-radius:8px;margin-bottom:16px;font-size:16px; }
-  .form-input, .form-select, .form-textarea {
-    width:100%; padding:8px; margin-bottom:8px; border:1px solid #ccc;
-    border-radius:6px; box-sizing:border-box; font-size:13px;
-  }
-  .form-input:focus, .form-select:focus, .form-textarea:focus {
-    outline:none; border-color:#8296AD; box-shadow:0 0 4px rgba(130,150,173,0.5);
-  }
-  .row-buttons { display:flex; gap:8px; margin-top:6px; }
-  .btn { flex:1;padding:10px;border:none;border-radius:8px;cursor:pointer;color:white; }
+  body { font-family: Arial; padding:20px; background:#f2f6fa; }
+  .card { max-width:450px; margin:auto; padding:14px; background:#fff; border-radius:12px; border:2px solid #8296AD; }
+  .form-input, .form-select { width:100%; padding:8px; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; box-sizing:border-box; }
+  .btn { padding:10px; border:none; border-radius:8px; cursor:pointer; color:white; width:100%; margin-top:6px; }
   .btn-wa { background:#25D366; }
   .btn-tg { background:#0088cc; }
-  .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; }
-  .modal { background:#fff; padding:18px; border-radius:12px; width:90%; max-width:420px; box-sizing:border-box; }
-  .modal h3 { margin-top:0; text-align:center; }
-  .modal .actions { display:flex; gap:8px; margin-top:12px; }
-  .qris-box { text-align:center; margin:10px 0; }
-  .qris-box img { max-width:260px; border-radius:8px; }
-  .small-note { font-size:12px; color:#555; margin-bottom:8px; }
-  .note-transparent { font-size:12px; color:#888; font-style:italic; }
+  #uploadStatus { display:none; margin-top:6px; }
 </style>
 </head>
 <body>
-
 <div class="card">
-  <h2>Formulir Pembelian Robux VILOG</h2>
-
-  <label>Nama / Inisial: *</label>
-  <input id="nama" type="text" class="form-input">
-
-  <label>Username Roblox: *</label>
-  <input id="roblox_user" type="text" class="form-input">
-
-  <label>Password Roblox: *</label>
-  <input id="roblox_pass" type="password" class="form-input">
-
-  <label>Verifikasi 2 Langkah (V2L): *</label>
-  <select id="v2l" onchange="toggleV2L()" class="form-select">
-    <option>OFF</option>
-    <option>ON</option>
-  </select>
-
-  <div id="v2l_wrap" style="display:none;">
-    <label>Pilih Metode V2L: *</label>
-    <select id="v2l_method" onchange="toggleBackup()" class="form-select">
-      <option value="">-- Pilih Metode --</option>
-      <option value="backup">Backup Code</option>
-      <option value="email">Kode Email (wajib standby)</option>
-    </select>
-  </div>
-
-  <div id="backup_wrap" style="display:none;">
-    <label>Backup Codes:</label>
-    <textarea id="backup" rows="2" class="form-textarea" placeholder="Masukkan kode yang belum pernah digunakan"></textarea>
-    <div class="note-transparent">⚠ Backup code hanya bisa digunakan sekali per code, pastikan input code yang belum pernah dipakai ya!</div>
-  </div>
-
-  <label>Kategori Robux: *</label>
-  <select id="kategori" onchange="updateNominal()" class="form-select">
-    <option value="">-- Pilih Kategori --</option>
-    <option value="reguler">Robux Reguler</option>
-    <option value="special">Robux Special</option>
-    <option value="premium">Robux + Premium</option>
-  </select>
-
-  <label>Jumlah Order: *</label>
-  <select id="jumlah" class="form-select">
-    <option value="">-- Pilih Nominal --</option>
-  </select>
-
-  <label>Harga:</label>
-  <input id="harga" type="text" class="form-input" readonly>
-
-  <label>Metode Pembayaran: *</label>
-  <select id="bayar" class="form-select">
-    <option>DANA</option>
-    <option>GoPay</option>
-    <option>ShopeePay</option>
-    <option>Seabank</option>
-    <option>QRIS All Payment</option>
-  </select>
-
-  <div id="tg_user_wrap" style="display:none;">
-    <label>Username Telegram (isi jika pesan via Telegram):</label>
-    <input id="tg_user" type="text" class="form-input" placeholder="@username">
-  </div>
-
-  <div class="row-buttons">
-    <button class="btn btn-wa" onclick="previewOrder('wa')">Pesan via WhatsApp</button>
-    <button class="btn btn-tg" onclick="previewOrder('tg')">Pesan via Telegram</button>
-  </div>
-</div>
-
-<!-- Modal Preview -->
-<div id="previewModal" class="modal-overlay">
-  <div class="modal">
-    <h3>Konfirmasi Pesanan</h3>
-    <pre id="previewText" style="white-space:pre-wrap;background:#f9f9f9;padding:10px;border:1px dashed #8296AD;border-radius:8px;"></pre>
-    <div class="small-note" id="previewNote"></div>
-    <div class="actions">
-      <button onclick="closePreview()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#ccc;color:black;">Batal</button>
-      <button id="previewConfirmBtn" style="flex:1;padding:10px;border:none;border-radius:8px;background:#4CAF50;color:white;">Konfirmasi & Lanjut</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal QRIS -->
-<div id="qrisModal" class="modal-overlay">
-  <div class="modal">
-    <h3>Bayar & Upload Bukti</h3>
-    <div class="small-note">Scan QRIS di bawah, lalu upload bukti pembayaran.</div>
-    <div class="qris-box">
-      <img id="qrisImage" src="https://payment.uwu.ai/assets/images/gallery01/82ce74a8_original.jpg?v=7023ef79">
-    </div>
-    <label>Pilih Bukti Pembayaran:</label>
-    <input id="buktiInput" type="file" accept="image/*" class="form-input">
-    <div class="small-note" id="uploadStatus" style="display:none;"></div>
-    <div class="actions">
-      <button onclick="closeQrisModal()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#ccc;">Batal</button>
-      <button onclick="uploadToAppsScript()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#0088cc;color:white;">Upload & Kirim</button>
-    </div>
-  </div>
+  <h2>Formulir Pembelian Robux</h2>
+  <label>Nama:</label><input id="nama" class="form-input" type="text">
+  <label>Username Roblox:</label><input id="roblox_user" class="form-input" type="text">
+  <label>Password Roblox:</label><input id="roblox_pass" class="form-input" type="password">
+  <label>Jumlah Robux:</label><input id="jumlah" class="form-input" type="number">
+  <label>Upload Bukti:</label><input id="bukti" type="file" accept="image/*" class="form-input">
+  <button class="btn btn-tg" onclick="submitForm()">Kirim</button>
+  <div id="uploadStatus"></div>
 </div>
 
 <script>
-/* === Data Robux & Harga === */
-const hargaRobux = {
-  reguler: {
-    "80 Robux":16000,"160 Robux":32000,"240 Robux":44500,"320 Robux":58000,
-    "400 Robux":70000,"480 Robux":85500,"560 Robux":102000,"640 Robux":114500,
-    "720 Robux":128000,"800 Robux":139000,"1700 Robux":278000,"2100 Robux":347000,
-    "2500 Robux":416000,"3400 Robux":560000,"4500 Robux":698000,"10.000 Robux":1390000,
-    "22.500 Robux":2780000
-  },
-  special: {
-    "500 Robux":75000,"1000 Robux":150000,"1500 Robux":225000,"2000 Robux":298000,
-    "2500 Robux":372000,"3000 Robux":447000,"3500 Robux":521000,"4000 Robux":596000,
-    "4500 Robux":670500,"5000 Robux":745000
-  },
-  premium: {
-    "450 Robux + Premium":75500,"1000 Robux + Premium":150000,"1550 Robux + Premium":225000,
-    "2100 Robux + Premium":298000,"2650 Robux + Premium":372000,"3200 Robux + Premium":447000
+const APPS_SCRIPT_URL = "MASUKKAN_WEB_APP_URL_MU";
+
+function submitForm(){
+  const nama = document.getElementById('nama').value.trim();
+  const user = document.getElementById('roblox_user').value.trim();
+  const pass = document.getElementById('roblox_pass').value.trim();
+  const jumlah = document.getElementById('jumlah').value.trim();
+  const fileInput = document.getElementById('bukti');
+  const statusEl = document.getElementById('uploadStatus');
+
+  if(!nama || !user || !pass || !jumlah || !fileInput.files.length){
+    alert("Isi semua field dan pilih bukti pembayaran.");
+    return;
   }
-};
 
-const WA_NUMBER = "6283197962700";
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXIj_WEsTqkpT5QkyDP06fHPbNAn3GQOx3WAUgs1XEurLblFgX3H6WDsa1l-SqhYMy/exec";
-
-let currentMethod = null, lastPreviewMessage = '';
-
-function toggleV2L(){
-  document.getElementById('v2l_wrap').style.display = (document.getElementById('v2l').value==="ON")?"block":"none";
-}
-function toggleBackup(){
-  document.getElementById('backup_wrap').style.display = (document.getElementById('v2l_method').value==="backup")?"block":"none";
-}
-function updateNominal(){
-  let kategori=document.getElementById("kategori").value;
-  let dropdown=document.getElementById("jumlah");
-  dropdown.innerHTML="<option value=''>-- Pilih Nominal --</option>";
-  if(hargaRobux[kategori]){
-    Object.keys(hargaRobux[kategori]).forEach(item=>{
-      let opt=document.createElement("option");
-      opt.value=item; opt.text=item;
-      dropdown.appendChild(opt);
-    });
-  }
-}
-document.getElementById("jumlah").addEventListener("change",function(){
-  let kategori=document.getElementById("kategori").value;
-  let nominal=this.value;
-  if(hargaRobux[kategori] && hargaRobux[kategori][nominal]){
-    document.getElementById("harga").value="Rp"+hargaRobux[kategori][nominal].toLocaleString("id-ID");
-  }else{document.getElementById("harga").value="";}
-});
-
-function previewOrder(method){
-  currentMethod=method;
-  document.getElementById("tg_user_wrap").style.display=(method==="tg")?"block":"none";
-  let nama=document.getElementById('nama').value.trim();
-  let roblox_user=document.getElementById('roblox_user').value.trim();
-  let roblox_pass=document.getElementById('roblox_pass').value.trim();
-  let v2l=document.getElementById('v2l').value;
-  let v2l_method=document.getElementById('v2l_method').value;
-  let backup=document.getElementById('backup').value.trim();
-  let kategori=document.getElementById('kategori').value;
-  let jumlah=document.getElementById('jumlah').value;
-  let harga=document.getElementById('harga').value;
-  let bayar=document.getElementById('bayar').value;
-  let tg_user=document.getElementById('tg_user').value.trim();
-
-  if(!nama||!roblox_user||!roblox_pass||!kategori||!jumlah||!bayar){
-    alert("Mohon isi semua field wajib."); return;
-  }
-  if(v2l==="ON" && !v2l_method){alert("Pilih metode V2L."); return;}
-  if(v2l==="ON" && v2l_method==="backup" && !backup){alert("Backup code wajib diisi."); return;}
-  if(method==='tg' && !tg_user){alert("Isi Username Telegram."); return;}
-
-  let lines=[
-    "Nama: "+nama,
-    "Username Roblox: "+roblox_user,
-    "Password Roblox: "+roblox_pass,
-    "V2L: "+v2l+(v2l==="ON"?" ("+v2l_method+")":""),
-    "Backup Codes: "+(backup||"-"),
-    "Kategori: "+kategori,
-    "Jumlah Order: "+jumlah,
-    "Harga: "+harga,
-    "Metode Bayar: "+bayar
-  ];
-  if(method==='tg') lines.push("Username Telegram: "+tg_user);
-  lastPreviewMessage=lines.join("\n");
-  document.getElementById('previewText').innerText=lastPreviewMessage;
-
-  const noteEl=document.getElementById('previewNote');
-  if(method==='wa'){
-    noteEl.innerText="Setelah konfirmasi, data akan terbuka di WhatsApp.";
-    document.getElementById('previewConfirmBtn').innerText="Kirim ke WhatsApp";
-  }else{
-    noteEl.innerText="Setelah konfirmasi, lakukan pembayaran via QRIS & upload bukti.";
-    document.getElementById('previewConfirmBtn').innerText="Lanjut ke Pembayaran (QRIS)";
-  }
-  document.getElementById('previewConfirmBtn').onclick=function(){
-    if(currentMethod==='wa'){
-      const waUrl=`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(lastPreviewMessage)}`;
-      window.open(waUrl,'_blank'); closePreview();
-    }else{closePreview(); openQrisModal();}
-  };
-  document.getElementById('previewModal').style.display='flex';
-}
-function closePreview(){document.getElementById('previewModal').style.display='none';}
-function openQrisModal(){
-  document.getElementById('buktiInput').value='';
-  document.getElementById('uploadStatus').style.display='none';
-  document.getElementById('qrisModal').style.display='flex';
-}
-function closeQrisModal(){document.getElementById('qrisModal').style.display='none';}
-
-async function uploadToAppsScript(){
-  const fileInput=document.getElementById('buktiInput');
-  if(!fileInput.files.length){alert("Pilih file bukti pembayaran."); return;}
-  const file=fileInput.files[0];
-  const reader=new FileReader();
-  reader.onload=async function(){
-    const base64=reader.result.split(",")[1];
-    const payload={
-      message:lastPreviewMessage,
-      filename:file.name,
-      mimetype:file.type,
-      image:base64
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+  reader.onload = async function(){
+    const base64 = reader.result.split(",")[1];
+    const payload = {
+      message: `Nama: ${nama}\nUsername: ${user}\nPassword: ${pass}\nJumlah: ${jumlah}`,
+      filename: file.name,
+      mimetype: file.type,
+      image: base64
     };
-    const statusEl=document.getElementById('uploadStatus');
-    statusEl.style.display='block'; statusEl.innerText="Mengirim ke server...";
+    statusEl.style.display = "block";
+    statusEl.innerText = "Mengirim data...";
+
     try{
-      const res=await fetch(APPS_SCRIPT_URL,{
-        method:"POST",
-        body:JSON.stringify(payload),
-        headers:{"Content-Type":"application/json"}
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
-      const data=await res.json();
-      if(data.result==="success"){
-        statusEl.innerText="Berhasil dikirim!"; setTimeout(closeQrisModal,1500);
-      }else{statusEl.innerText="Gagal simpan di server.";}
-    }catch(err){statusEl.innerText="Error: "+err;}
+      const data = await res.json();
+      if(data.result === "success"){
+        statusEl.innerText = "Berhasil dikirim! File URL: " + data.fileUrl;
+      } else {
+        statusEl.innerText = "Gagal: " + data.message;
+      }
+    } catch(err){
+      statusEl.innerText = "Error: " + err;
+    }
   };
   reader.readAsDataURL(file);
 }
 </script>
 </body>
 </html>
-
